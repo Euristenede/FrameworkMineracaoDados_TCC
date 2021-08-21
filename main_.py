@@ -24,6 +24,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn import tree
+from sklearn.inspection import permutation_importance
 import sip
 
 pd.set_option('mode.chained_assignment', None)
@@ -68,23 +69,19 @@ class MyApp(QMainWindow):
 
 class CreateProject(QMainWindow):
     '''Cria novos projetos'''
-
     # Método construtor
     def __init__(self):
         super().__init__()
         self.main_path = PATH
-
         uic.loadUi('create_project.ui', self)
-
         self.pushButton_main_path.clicked.connect(self.selectMainPath)
         self.pushButton_new_project.clicked.connect(self.createProject)
-        
         self.lineEdit_main_path.setText(self.main_path) 
 
     #Seleciona pasta principal do projeto
     def selectMainPath(self):
         self.main_path = QFileDialog.getExistingDirectory()
-        self.lineEdit_main_path.setText(self.main_path) 
+        self.lineEdit_main_path.setText(self.main_path)
 
     #Cria a pasta do novo projeto
     def createProject(self):
@@ -96,16 +93,12 @@ class CreateProject(QMainWindow):
 
 class AddFiles(QMainWindow):
     '''Adiciona novos arquivos a um projeto'''
-
     # Método construtor
     def __init__(self):
         super().__init__()
         self.main_path = PATH
-
         uic.loadUi('add_files.ui', self)
-
         self.model = QFileSystemModel()
-
         self.pushButton_project_path.clicked.connect(self.selectProject)
         self.pushButton_add_files.clicked.connect(self.addFiles)
         self.lineEdit_project_path.setText(self.main_path) 
@@ -129,15 +122,12 @@ class AddFiles(QMainWindow):
     def addFiles(self):
         self.files_path = QFileDialog.getOpenFileNames(self, 'Select csv File', "", "CSV files (*.csv)")[0]
         if self.files_path != []:
-
             for file in self.files_path:
                 head, tail = os.path.split(file)
                 join_main_path = os.path.join(self.main_path, tail)
                 new_tail = tail.split(".")
-
                 if os.path.isfile(join_main_path):
                     n = 0
-
                     while(os.path.isfile(join_main_path)):
                         n +=1
                         join_main_path = os.path.join(self.main_path, new_tail[0]+"_"+str(n)+"."+new_tail[1])
@@ -277,13 +267,18 @@ class OptionsMachine(QMainWindow):
         clf = DecisionTreeClassifier(max_depth=max_depth, random_state=0)
         Y = Y.astype('int').values
         result = clf.fit(X, Y).predict(X.values)
+        '''
+        plt.figure(figsize=(10, 10))  # set plot size (denoted in inches)
+        tree.plot_tree(clf, feature_names=X.columns, fontsize=8)
+        plt.show()
+        '''
+        self.plotMachine.show()
+        self.plotMachine.plotTree(clf, X.columns)
+
         X["y"] = Y
         X["y_result"] = result
 
         X.to_csv(os.path.join(self.path_parent, self.file_name+ "_tree.csv"), sep=';', index=False)
-
-        self.plotMachine.show()
-        self.plotMachine.plotTree(clf)
 
         Y = np.ravel(Y)
         precision = round(precision_score(Y, result, average='macro'), 2)
@@ -297,16 +292,37 @@ class OptionsMachine(QMainWindow):
     #Aplicação do Naive Bayes
     def execBayes(self):
         X, Y = self.selectInputOutput()
+        A = X
+        B = Y
         clf = GaussianNB()
         Y = Y.astype('int').values
         result = clf.fit(X, Y).predict(X.values)
         X["y"] = Y
         X["y_result"] = result
 
-        X.to_csv(os.path.join(self.path_parent, self.file_name+ "_bayes.csv"), sep=';', index=False)
-        self.plotMachine.show()
-        self.plotMachine.plotConfution(Y, result)
+        A =  A.drop(columns=['y', 'y_result'])
+        features = A.columns.values
+        cnb = GaussianNB()
+        B = B.astype('int').values
+        cnb.fit(A, B)
+        y_pred_cnb = cnb.predict(A.values)
+        imps = permutation_importance(cnb, A, B)
+        importances = imps.importances_mean
+        std = imps.importances_std
+        indices = np.argsort(importances)[::-1]
 
+        max_features = 10
+        indices = indices[:max_features]
+
+        plt.figure(figsize=(9, 7))
+        plt.title("Feature importances")
+        plt.bar(range(max_features), importances[indices], color="r", yerr=std[indices], align="center")
+        plt.xticks(range(max_features), [features[indices[i]] for i in range(max_features)], rotation='vertical')
+        plt.xlim([-1, max_features])
+        plt.tight_layout()
+        plt.show()
+
+        X.to_csv(os.path.join(self.path_parent, self.file_name+ "_bayes.csv"), sep=';', index=False)
         Y = np.ravel(Y)
         precision = round(precision_score(Y, result, average='macro', zero_division=0), 2)
         recall = round(recall_score(Y, result, average='macro', zero_division=0),2)
@@ -347,14 +363,14 @@ class ViewMachine(QMainWindow):
         self.verticalLayout.addWidget(self.chart)
 
     #Visualização da Árvore de Decisão
-    def plotTree(self, clf):
+    def plotTree(self, clf, cols_name):
         self.updatePlot()
         self.chart.ax.cla()
         ax = self.chart.ax
-        ax = tree.plot_tree(clf)
+        ax = tree.plot_tree(clf, feature_names=cols_name, fontsize= 4)
 
     #Visualização da Matriz de Confusão
-    def plotConfution(self, y_pred, y_true):
+    def plotConfusion(self, y_pred, y_true):
         self.updatePlot()
         self.chart.ax.cla()
         ax = self.chart.ax
@@ -381,7 +397,7 @@ class ViewPlots(QMainWindow):
         self.pushButton_histo.clicked.connect(self.plotHisto)
         self.pushButton_points.clicked.connect(self.plotPoints)
         self.pushButton_dp.clicked.connect(self.plotDp)
-        self.pushButton_confution.clicked.connect(self.plotConfution)
+        self.pushButton_confution.clicked.connect(self.plotConfusion)
 
         self.path_parent = self.pathfile.parent
         self.file_name = self.pathfile.stem
@@ -455,7 +471,7 @@ class ViewPlots(QMainWindow):
         ax.set_yticks([])
 
     #Matriz  de Confusão
-    def plotConfution(self):
+    def plotConfusion(self):
         y_pred = str(self.comboBox_yTrue.currentText())
         y_pred = np.ravel(self.df[[y_pred]].values)
 

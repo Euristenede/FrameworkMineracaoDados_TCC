@@ -82,6 +82,9 @@
       <height>26</height>
      </rect>
     </property>
+    <property name="maximum">
+     <number>999</number>
+    </property>
    </widget>
    <widget class="QPushButton" name="pushButton_deleteRow">
     <property name="geometry">
@@ -104,6 +107,9 @@
       <width>48</width>
       <height>26</height>
      </rect>
+    </property>
+    <property name="maximum">
+     <number>999</number>
     </property>
    </widget>
    <widget class="QLabel" name="label_3">
@@ -200,6 +206,9 @@
       <height>26</height>
      </rect>
     </property>
+    <property name="maximum">
+     <number>999</number>
+    </property>
    </widget>
    <widget class="QLabel" name="label_7">
     <property name="geometry">
@@ -274,6 +283,9 @@
       <width>48</width>
       <height>26</height>
      </rect>
+    </property>
+    <property name="maximum">
+     <number>999</number>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_minMax">
@@ -375,6 +387,9 @@
       <width>48</width>
       <height>26</height>
      </rect>
+    </property>
+    <property name="maximum">
+     <number>999</number>
     </property>
    </widget>
    <widget class="QPushButton" name="pushButton_freq">
